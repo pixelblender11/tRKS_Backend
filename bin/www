@@ -4,15 +4,20 @@
  * Module dependencies.
  */
 
+require('dotenv').config();
+
 var app = require('../app');
-var debug = require('debug')('thetrp:server');
+var debug = require('debug')('trks:server');
 var http = require('http');
+const db = require('../config/db');
+const { seedIfEmpty } = require('../config/seed');
 
 /**
  * Get port from environment and store in Express.
+ * 3001 matches the Flutter app's NetworkService baseUrl.
  */
 
-var port = normalizePort(process.env.PORT || '3000');
+var port = normalizePort(process.env.PORT || '3001');
 app.set('port', port);
 
 /**
@@ -22,12 +27,38 @@ app.set('port', port);
 var server = http.createServer(app);
 
 /**
- * Listen on provided port, on all network interfaces.
+ * Connect to MongoDB, seed if empty, then listen.
  */
 
-server.listen(port);
-server.on('error', onError);
-server.on('listening', onListening);
+db.connect()
+    .then(seedIfEmpty)
+    .then(function () {
+        server.listen(port);
+        server.on('error', onError);
+        server.on('listening', onListening);
+    })
+    .catch(function (err) {
+        console.error('Failed to start:', err);
+        process.exit(1);
+    });
+
+/**
+ * Graceful shutdown - important when the local MongoDB is in use, so its
+ * child process releases the data-directory lock.
+ */
+
+['SIGINT', 'SIGTERM'].forEach(function (signal) {
+    process.on(signal, function () {
+        console.log(signal + ' received, shutting down...');
+        server.close(function () {
+            db.disconnect()
+                .then(function () { process.exit(0); })
+                .catch(function () { process.exit(1); });
+        });
+        // force-exit if something hangs
+        setTimeout(function () { process.exit(1); }, 10000).unref();
+    });
+});
 
 /**
  * Normalize a port into a number, string, or false.
@@ -87,4 +118,5 @@ function onListening() {
     ? 'pipe ' + addr
     : 'port ' + addr.port;
   debug('Listening on ' + bind);
+  console.log('tRKS API listening on ' + bind);
 }

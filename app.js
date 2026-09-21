@@ -1,7 +1,11 @@
+require('dotenv').config();
+
 const express = require('express');
 var path = require('path');
 var cookieParser = require('cookie-parser');
 var logger = require('morgan');
+
+const { requireSession } = require('./middleware/auth');
 
 var indexRouter = require('./routes/index');
 
@@ -16,22 +20,27 @@ app.use(express.static(path.join(__dirname, 'public')));
 //Route Registration
 app.use('/', indexRouter);
 
-//Counter registration
-const countersRoute = require('./routes/counters');
-app.use('/counters', countersRoute);
+//Session tokens (public)
+const authRoute = require('./routes/auth');
+app.use('/auth', authRoute);
 
-
-//ShopItems registration
+//ShopItems registration (JWT protected)
 const shopItemsRoute = require('./routes/shopItems');
-app.use('/shopitems', shopItemsRoute);
+app.use('/shopitems', requireSession, shopItemsRoute);
 
-//Utility Dart generator
-const generatorRoute = require('./utilities/generator');
-app.use('/generator', generatorRoute);
+//Cart registration (JWT protected)
+const cartRoute = require('./routes/cart');
+app.use('/cart', requireSession, cartRoute);
 
-var port = process.env.PORT || 3001;
-app.listen(port, function () {
-    console.log('Example app listening on port ' + port + '!');
+// 404
+app.use(function (req, res) {
+    res.status(404).json({ error: 'Not found' });
+});
+
+// Error handler
+app.use(function (err, req, res, next) {
+    console.error(err);
+    res.status(err.status || 500).json({ error: 'Internal server error' });
 });
 
 module.exports = app;

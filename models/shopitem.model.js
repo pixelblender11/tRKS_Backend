@@ -1,65 +1,65 @@
-const mongoose = require('mongoose');
-// Define the User schema
-const shopItemSchema = new mongoose.Schema({
+const { DataTypes } = require('sequelize');
+const { sequelize } = require('../config/db');
+
+// Mirrors lib/Models/ShopItem.dart in the Flutter front end.
+const ShopItem = sequelize.define('ShopItem', {
     pKey: {
-        type: Number,
-        required: true,
+        type: DataTypes.INTEGER,
+        allowNull: false,
         unique: true,
     },
-    image: {
-        type: String, // URL or file path
-        required: false,
-    },
     title: {
-        type: String,
-        required: true,
-        unique: false,
+        type: DataTypes.STRING,
+        allowNull: false,
     },
     description: {
-        type: String,
-        required: true,
-        unique: false,
+        type: DataTypes.TEXT,
+        allowNull: false,
+    },
+    tags: {
+        type: DataTypes.STRING,
+        allowNull: false,
+        defaultValue: '',
     },
     price: {
-        type: Number,
-        required: true,
-        unique: false,
+        type: DataTypes.DOUBLE,
+        allowNull: false,
+        validate: { min: 0 },
     },
     discount: {
-        type: Number,
-        required: true,
-        unique: false,
+        type: DataTypes.DOUBLE, // discount amount subtracted from price
+        allowNull: false,
+        defaultValue: 0,
+        validate: { min: 0 },
     },
-    discquantity: {
-        type: Number,
-        required: true,
-        unique: false,
-    }
-
+    availableQty: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        validate: { min: 0 },
+    },
+    image: {
+        type: DataTypes.STRING, // URL or file path
+        allowNull: true,
+    },
+    dateAdded: {
+        type: DataTypes.DATE,
+        allowNull: false,
+        defaultValue: DataTypes.NOW,
+    },
+    categoryKey: {
+        type: DataTypes.ARRAY(DataTypes.INTEGER),
+        allowNull: false,
+        defaultValue: [],
+    },
+}, {
+    tableName: 'shop_items',
+    timestamps: false,
+    indexes: [
+        // backing the filter/sort options exposed by /shopitems/search
+        { fields: ['price'] },
+        { fields: ['dateAdded'] },
+        { fields: ['categoryKey'], using: 'gin' },
+    ],
 });
 
-// static generator
-shopItemSchema.statics.generateItem = function (pKey) {
-  const titles = ["Headphones", "Mouse", "Keyboard", "Monitor", "Speaker"];
-  const descriptions = [
-    "High-quality product",
-    "Best in class performance",
-    "Ergonomic and durable",
-    "Top-rated item",
-    "Customer favorite"
-  ];
-
-  return {
-    pKey,
-    image: `https://via.placeholder.com/300?text=Item+${pKey}`,
-    title: `${titles[Math.floor(Math.random() * titles.length)]} ${pKey}`,
-    description: descriptions[Math.floor(Math.random() * descriptions.length)],
-    price: +(Math.random() * 200 + 20).toFixed(2),
-    discount: Math.floor(Math.random() * 30),
-    discquantity: Math.floor(Math.random() * 100) + 1
-  };
-};
-
-// Create the User model from the schema
-const ShopItem = mongoose.model('shopItem', shopItemSchema);
 module.exports = ShopItem;
